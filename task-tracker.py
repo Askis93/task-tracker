@@ -16,26 +16,74 @@ args = parser.parse_args()
 
 task_file = "tasks.json"
 
+current_time = datetime.now()
+formatted_time = current_time.strftime('%H:%M %d %B %Y')
+
 def add_task():
 
     tasks = args.add
 
-    print("Add task: " + tasks)
+    if not os.path.exists(task_file):
+    # turn task into a dictionary because it's a new json file
+        tasks = [
+            {
+                'id': 1,
+                'description': args.add,
+                'status': 'todo',
+                'createdAt': formatted_time,
+                'updatedAt': formatted_time
+            }
+        ]
+        with open(task_file, 'w') as file:
+            json.dump(tasks, file, indent=4)
+        print(tasks)
+    else:
+        with open(task_file, "r") as file:
+            data = json.load(file)
+            
+            highest_id = None
+            for task in data:
+                if highest_id == None:
+                    highest_id = task.get("id")
+                    continue
+                if task.get("id") > highest_id:
+                    highest_id = task.get("id")
 
-    with open(task_file, "r") as file:
-        data = json.load(file)
-        print(json.dumps(data, indent=4))
+            new_task = {
+                "id" : highest_id + 1,
+                "description" : args.add,
+                "status": "todo",
+                "createdAt" : formatted_time,
+                "updatedAt" : formatted_time
+            }
+            
+            data.append(new_task)
+
+            print(json.dumps(data, indent=4))
+        
+        with open(task_file, "w") as file:
+            json.dump(data, file, indent=4)
+
+
 
 def delete_task():
 
     delete_task = args.delete
-
-    print("Delete task: " + delete_task)
+    task_was_deleted = False
+    print("Trying to delete task: " + delete_task)
 
     with open(task_file, "r") as file:
-       data = json.load(file)
-       newdata = [obj for obj in data if obj.get('id') != int(delete_task)]
-       
+        data = json.load(file)
+        newdata = []
+        for obj in data:
+            if obj.get('id') != int(delete_task):
+                newdata.append(obj)
+            else:
+                task_was_deleted = True
+
+    if task_was_deleted == False:
+        print("No task with that id")
+        return
     with open(task_file, "w") as file:
         json.dump(newdata, file, indent=4)
 
