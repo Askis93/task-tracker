@@ -3,28 +3,33 @@ import argparse
 import os
 from datetime import datetime
 
+# Create parser
 parser = argparse.ArgumentParser()
 
+# Parse arguments
 parser.add_argument("-a", "--add", help="Add task to tracker", required=False)
-parser.add_argument("-l", "--list", help="Show tasks, filter by [all, done, todo, in-progress]", const="all", nargs="?", required=False)
-parser.add_argument("-u", "--update", help="Update task", required=False)
-parser.add_argument("-d", "--delete", help="Delete task", required=False)
-parser.add_argument("-c", "--complete", help="Mark as done", required=False)
-parser.add_argument("-p", "--progress", help="Mark as in progress", required=False)
+parser.add_argument("-l", "--list", help="Show tasks, filter by [all, done, todo, in progress]", const="all", nargs="?", required=False)
+parser.add_argument("-u", "--update", help="Type new description", required=False)
+parser.add_argument("-p", "--pick", help="Task id", required=False)
+parser.add_argument("-d", "--delete", help="Delete task", required=False, action="store_true")
+parser.add_argument("--done", help="Mark as done", required=False, action="store_true")
+parser.add_argument("--progress", help="Mark as in progress", required=False, action="store_true")
 
+# Process arguments
 args = parser.parse_args()
 
+# File path
 task_file = "tasks.json"
 
+# Create and format time to dd-mm-yy HH:MM
 current_time = datetime.now()
 formatted_time = current_time.strftime('%H:%M %d %B %Y')
 
+# Add new task
 def add_task():
-
     tasks = args.add
 
     if not os.path.exists(task_file):
-    # turn task into a dictionary because it's a new json file
         tasks = [
             {
                 'id': 1,
@@ -58,17 +63,14 @@ def add_task():
             }
             
             data.append(new_task)
-
             print(json.dumps(data, indent=4))
         
         with open(task_file, "w") as file:
             json.dump(data, file, indent=4)
 
-
-
+# Delete existing task
 def delete_task():
-
-    delete_task = args.delete
+    delete_task = args.pick
     task_was_deleted = False
     print("Trying to delete task: " + delete_task)
 
@@ -86,48 +88,81 @@ def delete_task():
         return
     with open(task_file, "w") as file:
         json.dump(newdata, file, indent=4)
+        print("Task " + delete_task + " was deleted")
 
+# List tasks based on given filter option
 def list_tasks():
-    
     filter = args.list
     
     with open(task_file, "r") as file:
         data = json.load(file)
         
+        tasks_done = []
         if filter == "all":
             print(json.dumps(data, indent=4))
 
-        if filter == "done":
-            tasks_done = []
+        elif filter == "done":
             for task in data:
                 if task.get("status") == "done":
                     tasks_done.append(task)
             print(json.dumps(tasks_done, indent=4))
 
-        if filter == "in-progess":
-            tasks_done = []
+        elif filter == "in progress":
             for task in data:
-                if task.get("status") == "in-progess":
+                if task.get("status") == "in progress":
                     tasks_done.append(task)
             print(json.dumps(tasks_done, indent=4))
 
-        if filter == "todo":
-            tasks_done = []
+        elif filter == "todo":
             for task in data:
                 if task.get("status") == "todo":
                     tasks_done.append(task)
             print(json.dumps(tasks_done, indent=4))
             
-
+# Update specified tasks description
 def update_task():
-    pass
+    task_id = args.pick
+    update_task = args.update
 
-def mark_as_done():
-    pass
+    with open(task_file, "r") as file:
+        data = json.load(file)
 
-def mark_as_in_progress():
-    pass
-    
+        task_found = False
+        for task in data:
+            if task.get("id") == int(task_id):
+                task["description"] = update_task
+                task["updatedAt"] = formatted_time
+                task_found = True
+                break
+
+        if task_found == True:
+            with open(task_file, "w") as file:
+                json.dump(data, file, indent=4)
+
+    print("Task " + task_id + " was updated with description: " + update_task)
+
+# Update specified tasks status
+def mark_status():
+    task_id = args.pick
+
+    with open(task_file, "r") as file:
+        data = json.load(file)
+
+        task_found = False
+        for task in data:
+            if task.get("id") == int(task_id):
+                if args.done:
+                    task["status"] = "done"
+                    print("Task " + task_id + " is now status: done")
+                else:
+                    task["status"] = "in progress"
+                    print("Task " + task_id + " is now status: in-progress")
+                task_found = True
+                task["updatedAt"] = formatted_time
+
+        if task_found == True:
+            with open(task_file, "w") as file:
+                json.dump(data, file, indent=4)
 
 
 if args.add:
@@ -136,5 +171,15 @@ if args.add:
 elif args.list:
     list_tasks()
 
-elif args.delete:
-    delete_task()
+elif args.pick:
+    if args.delete:
+        delete_task()
+    elif args.update:
+        update_task()
+    elif args.done or args.progress:
+        mark_status()
+    else:
+        parser.error("When using 'pick', --delete, --update, --done, or --progress must be specified")
+
+else:
+    exit()
